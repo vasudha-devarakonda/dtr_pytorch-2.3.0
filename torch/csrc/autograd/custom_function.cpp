@@ -503,6 +503,7 @@ void check_variable_result(
 }
 
 void AutogradContext::save_for_backward(variable_list to_save) {
+  std::cout << "saved for backward\n";
   to_save_ = std::move(to_save);
 }
 

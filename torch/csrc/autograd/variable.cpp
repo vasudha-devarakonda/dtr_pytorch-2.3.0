@@ -12,10 +12,10 @@
 #include <torch/csrc/autograd/utils/error_messages.h>
 
 #include <ATen/ATen.h>
+#include <ATen/CheckpointTensorImpl.h>
 #include <ATen/FuncTorchTLS.h>
 #include <ATen/MemoryOverlap.h>
 #include <c10/util/Exception.h>
-
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -38,7 +38,23 @@ static std::unique_ptr<ViewFunc> create_view_func_matching(const Variable& t) {
   return std::make_unique<ErroringViewFunc>("as_strided() not available");
 #endif
 }
+Variable make_variable_from_checkpoint_tensor(
+    const at::Tensor& data,
+    Edge gradient_edge,
+    bool allow_tensor_metadata_change) {
+  auto* ckpt_impl =
+      dynamic_cast<at::CheckpointTensorImpl*>(data.unsafeGetTensorImpl());
+  TORCH_CHECK(ckpt_impl, "Tensor is not a CheckpointTensorImpl");
+      // std::cout << "checkpoint implementtaoin\n";
+  auto data_impl_copy = ckpt_impl->shallow_copy_and_detach(
+      0, allow_tensor_metadata_change);
 
+  data_impl_copy->set_autograd_meta(
+      std::make_unique<AutogradMeta>(
+          data_impl_copy.get(), false, std::move(gradient_edge)));
+
+  return Variable(data_impl_copy);
+}
 DifferentiableViewMeta::DifferentiableViewMeta(
     at::TensorImpl* self_impl,
     c10::optional<ViewInfo> backward_info,

@@ -673,8 +673,9 @@ GraphTask::GraphTask(
       reentrant_depth_(reentrant_depth),
       exit_on_error_(exit_on_error),
       cpu_ready_queue_(std::move(cpu_ready_queue)),
-      future_result_(c10::make_intrusive<at::ivalue::Future>(
-          c10::ListType::create(c10::TensorType::get()))),
+      future_result_(
+          c10::make_intrusive<at::ivalue::Future>(
+              c10::ListType::create(c10::TensorType::get()))),
       id_(graph_task_id.fetch_add(1, std::memory_order_relaxed)) {
   thread_locals_.set_grad_mode(grad_mode);
 }
@@ -841,13 +842,15 @@ void set_device(int device) {
   // Don't use DeviceGuard here because its destructor may be called before the
   // device is reset. This is fine because the device is thread local.
   if (device != CPU_DEVICE) {
-    for (const auto i : c10::irange(static_cast<size_t>(
-             c10::DeviceType::COMPILE_TIME_MAX_DEVICE_TYPES))) {
+    for (const auto i : c10::irange(
+             static_cast<size_t>(
+                 c10::DeviceType::COMPILE_TIME_MAX_DEVICE_TYPES))) {
       auto* impl = c10::impl::device_guard_impl_registry[i].load();
       if (impl && device < impl->deviceCount()) {
-        impl->setDevice(at::Device(
-            static_cast<c10::DeviceType>(i),
-            static_cast<c10::DeviceIndex>(device)));
+        impl->setDevice(
+            at::Device(
+                static_cast<c10::DeviceType>(i),
+                static_cast<c10::DeviceIndex>(device)));
       }
     }
   }
@@ -1249,12 +1252,13 @@ auto Engine::execute(
   auto min_topo_nr = compute_min_topological_nr(outputs);
   // Now compute the dependencies for all executable functions
   compute_dependencies(graph_root.get(), *graph_task, min_topo_nr);
-
+    // std::cout << "0923230932\n";
   if (!outputs.empty()) {
+    // std::cout << "iuewiewiwe\n";
     graph_task->init_to_execute(
         *graph_root, outputs, accumulate_grad, min_topo_nr);
   }
-
+  // std::cout << "iewioweowe\n";
   if (compiled_autograd != nullptr) {
     // see [Note: Compiled Autograd]
     TORCH_CHECK(
@@ -1263,12 +1267,14 @@ auto Engine::execute(
     TORCH_CHECK(
         !AnomalyMode::is_enabled(),
         "compiled_autograd does not support AnomalyMode")
+    // std::cout << "owowowopw\n";
     return (*compiled_autograd)(
         graph_root, *graph_task, accumulate_grad, outputs);
   }
 
   // Queue the root
   if (skip_dummy_node) {
+    // std::cout << "opwpoww\n";
     InputBuffer input_buffer(root_edges.at(0).function->num_inputs());
     auto input = inputs.at(0);
 
@@ -1283,14 +1289,17 @@ auto Engine::execute(
     execute_with_graph_task(
         graph_task, std::move(graph_root), std::move(input_buffer));
   } else {
+
     execute_with_graph_task(
         graph_task, std::move(graph_root), InputBuffer(variable_list()));
   }
   // Avoid a refcount bump for the Future, since we check for refcount in
   // DistEngine (see TORCH_INTERNAL_ASSERT(futureGrads.use_count() == 1)
   // in dist_engine.cpp).
+  // std::cout << "assigning to graph\n";
   auto& fut = graph_task->future_result_;
   fut->wait();
+  // std::cout << "done with waiting\n";
   graph_task->warning_handler_.replay_warnings();
   return fut->value().toTensorVector();
 }
@@ -1310,6 +1319,7 @@ c10::intrusive_ptr<at::ivalue::Future> Engine::execute_with_graph_task(
     InputBuffer&& input_buffer) {
   initialize_device_threads_pool();
   // Lock mutex for GraphTask.
+  // std::cout << "9838933\n";
   std::unique_lock<std::mutex> lock(graph_task->mutex_);
 
   auto queue = ready_queue(graph_task->cpu_ready_queue_, input_buffer.device());
@@ -1320,6 +1330,7 @@ c10::intrusive_ptr<at::ivalue::Future> Engine::execute_with_graph_task(
     // We set the worker_device to CPU_DEVICE only if worker_device was
     // previously NO_DEVICE. Setting it to CPU afterwards allow us to detect
     // whether this is a re-entrant call or not.
+    // std::cout << "983893wwweweewewwe3\n";
     set_device(CPU_DEVICE);
 
     // set the graph_task owner to the current device
@@ -1347,6 +1358,7 @@ c10::intrusive_ptr<at::ivalue::Future> Engine::execute_with_graph_task(
 
     // Now that all the non-thread safe fields of the graph_task have been
     // populated, we can enqueue it.
+    std::cout << "node push\n";
     queue->push(
         NodeTask(graph_task, std::move(graph_root), std::move(input_buffer)));
 
@@ -1574,6 +1586,7 @@ void GraphTask::init_to_execute(
     const edge_list& outputs,
     bool accumulate_grad,
     uint64_t min_topo_nr) {
+      std::cout << "graph task\n";
   // Populates exec_info so nodes that should be executed have
   // `exec_info[node].needed_ = true` Only nodes that have a path to any edge in
   // `outputs` should be executed. The code below populates exec_info using
@@ -1606,6 +1619,7 @@ void GraphTask::init_to_execute(
   for (auto& output_edge : outputs) {
     // (0) `is_needed` above corresponds to `exec_info_[fn].needed_`
     Node* output = output_edge.function.get();
+    std::cout << "running grad:" <<output->name() << "\n";
     auto& info = exec_info_[output];
     if (accumulate_grad) {
       // if called through `.backward()` we directly set `needed_` for all the

@@ -48,8 +48,7 @@ namespace c10 {
   _(PrivateUse1, extra)                         \
   _(PrivateUse2, extra)                         \
   _(PrivateUse3, extra)                         \
-  _(Meta, extra)
-
+  _(Meta, extra)                                \
 // WARNING!  If we add a new per-backend functionality key that has higher
 // priority than Autograd, then make sure you update EndOfRuntimeBackendKeys
 
@@ -261,6 +260,7 @@ enum class DispatchKey : uint16_t {
   // constituent parts.
   // TODO: delete this once torchdim lands in functorch
   Named,
+  Checkpoint,
 
   // The Conjugate dispatch key is set for any tensors that need to perform
   // conjugation
@@ -310,6 +310,7 @@ enum class DispatchKey : uint16_t {
   // up to the `VariableType` kernel. Thus we only add the extra dispatch
   // to view/inplace ops to minimize its perf impact to real models.
   ADInplaceOrView,
+
   // Note [Alias Dispatch Key : Autograd]
   // All backends are oblivious to autograd; autograd is handled as a
   // layer which happens on top of all backends. It inspects the autograd
@@ -434,11 +435,10 @@ enum class DispatchKey : uint16_t {
 
 #define DEFINE_PER_BACKEND_KEYS_FOR_BACKEND(n, prefix) prefix##n,
 
-#define DEFINE_PER_BACKEND_KEYS(fullname, prefix)      \
-  StartOf##fullname##Backends,                         \
-      C10_FORALL_BACKEND_COMPONENTS(                   \
-          DEFINE_PER_BACKEND_KEYS_FOR_BACKEND, prefix) \
-          EndOf##fullname##Backends = prefix##Meta,
+#define DEFINE_PER_BACKEND_KEYS(fullname, prefix)                                                            \
+  StartOf##fullname##Backends,                                                                               \
+      C10_FORALL_BACKEND_COMPONENTS(DEFINE_PER_BACKEND_KEYS_FOR_BACKEND, prefix) EndOf##fullname##Backends = \
+          prefix##Meta,
 
   C10_FORALL_FUNCTIONALITY_KEYS(DEFINE_PER_BACKEND_KEYS)
 
@@ -521,12 +521,11 @@ enum class DispatchKey : uint16_t {
 // tensors that compose multiple internal tensors, and for cases when the
 // built-in autograd formulas for operators are not appropriate.
 
-static_assert(
-    (static_cast<uint8_t>(BackendComponent::EndOfBackendKeys) +
-     static_cast<uint8_t>(DispatchKey::EndOfFunctionalityKeys)) <= 64,
-    "The BackendComponent and DispatchKey enums (below EndOfFunctionalityKeys)"
-    " both map to backend and functionality bits"
-    " into a 64-bit bitmask; you must have less than 64 total entries between them");
+static_assert((static_cast<uint8_t>(BackendComponent::EndOfBackendKeys) +
+               static_cast<uint8_t>(DispatchKey::EndOfFunctionalityKeys)) <= 64,
+              "The BackendComponent and DispatchKey enums (below EndOfFunctionalityKeys)"
+              " both map to backend and functionality bits"
+              " into a 64-bit bitmask; you must have less than 64 total entries between them");
 
 // Check if a DispatchKey is an alias mapping to other runtime keys.
 constexpr bool isAliasDispatchKey(DispatchKey k) {
@@ -546,10 +545,8 @@ constexpr bool isAliasDispatchKey(DispatchKey k) {
 // slots in the runtime operator table.
 
 constexpr bool isPerBackendFunctionalityKey(DispatchKey k) {
-  if (k == DispatchKey::Dense || k == DispatchKey::Quantized ||
-      k == DispatchKey::Sparse || k == DispatchKey::SparseCsr ||
-      k == DispatchKey::AutogradFunctionality ||
-      k == DispatchKey::NestedTensor) {
+  if (k == DispatchKey::Dense || k == DispatchKey::Quantized || k == DispatchKey::Sparse ||
+      k == DispatchKey::SparseCsr || k == DispatchKey::AutogradFunctionality || k == DispatchKey::NestedTensor) {
     return true;
   } else {
     return false;
@@ -560,18 +557,15 @@ constexpr bool isPerBackendFunctionalityKey(DispatchKey k) {
 // BUT EndOfFunctionalityKeys is its own (placeholder) key.
 // e.g. Undefined=0, Dense=1, Sparse=2, EndOfFunctionalityKeys=3.
 // In the above example, there are 3 total functionality keys.
-constexpr uint8_t num_functionality_keys =
-    static_cast<uint8_t>(DispatchKey::EndOfFunctionalityKeys);
+constexpr uint8_t num_functionality_keys = static_cast<uint8_t>(DispatchKey::EndOfFunctionalityKeys);
 
-constexpr uint8_t num_backends =
-    static_cast<uint8_t>(BackendComponent::EndOfBackendKeys);
+constexpr uint8_t num_backends = static_cast<uint8_t>(BackendComponent::EndOfBackendKeys);
 
 // Note [No More Than 16 Backends]
 // Search for this note to find places in the code where the "no more than 16
 // backends" invariant is baked in.
-static_assert(
-    static_cast<uint8_t>(BackendComponent::EndOfBackendKeys) <= 16,
-    "BackendComponent currently only supports <= 16 backends. If we really need to extend this, \
+static_assert(static_cast<uint8_t>(BackendComponent::EndOfBackendKeys) <= 16,
+              "BackendComponent currently only supports <= 16 backends. If we really need to extend this, \
 there are a few places where this invariant is baked in");
 
 constexpr uint8_t numPerBackendFunctionalityKeys() {
@@ -587,13 +581,12 @@ constexpr uint8_t numPerBackendFunctionalityKeys() {
 // See [Note: Trimmed Mobile Dispatch Keys]
 constexpr uint16_t num_runtime_entries = 8;
 #else
-constexpr uint16_t num_runtime_entries = num_functionality_keys +
-    (numPerBackendFunctionalityKeys() * (num_backends - 1));
+constexpr uint16_t num_runtime_entries =
+    num_functionality_keys + (numPerBackendFunctionalityKeys() * (num_backends - 1));
 #endif
 
 // See Note [No More Than 16 Backends]
-constexpr uint16_t full_backend_mask =
-    (static_cast<uint16_t>(1) << num_backends) - 1;
+constexpr uint16_t full_backend_mask = (static_cast<uint16_t>(1) << num_backends) - 1;
 
 C10_API const char* toString(DispatchKey);
 C10_API const char* toString(BackendComponent);
@@ -618,42 +611,25 @@ constexpr DispatchKey kAutograd = DispatchKey::Autograd;
 // StartOfDenseBackends and EndOfRuntimeBackendKeys are ordered by backend
 // in the same order as `BackendComponent`.
 constexpr BackendComponent toBackendComponent(DispatchKey k) {
-  if (k >= DispatchKey::StartOfDenseBackends &&
-      k <= DispatchKey::EndOfDenseBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(DispatchKey::StartOfDenseBackends));
-  } else if (
-      k >= DispatchKey::StartOfQuantizedBackends &&
-      k <= DispatchKey::EndOfQuantizedBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(DispatchKey::StartOfQuantizedBackends));
-  } else if (
-      k >= DispatchKey::StartOfSparseBackends &&
-      k <= DispatchKey::EndOfSparseBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(DispatchKey::StartOfSparseBackends));
-  } else if (
-      k >= DispatchKey::StartOfSparseCsrBackends &&
-      k <= DispatchKey::EndOfSparseCsrBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(DispatchKey::StartOfSparseCsrBackends));
-  } else if (
-      k >= DispatchKey::StartOfNestedTensorBackends &&
-      k <= DispatchKey::EndOfNestedTensorBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(DispatchKey::StartOfNestedTensorBackends));
-  } else if (
-      k >= DispatchKey::StartOfAutogradFunctionalityBackends &&
-      k <= DispatchKey::EndOfAutogradFunctionalityBackends) {
-    return static_cast<BackendComponent>(
-        static_cast<uint8_t>(k) -
-        static_cast<uint8_t>(
-            DispatchKey::StartOfAutogradFunctionalityBackends));
+  if (k >= DispatchKey::StartOfDenseBackends && k <= DispatchKey::EndOfDenseBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfDenseBackends));
+  } else if (k >= DispatchKey::StartOfQuantizedBackends && k <= DispatchKey::EndOfQuantizedBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfQuantizedBackends));
+  } else if (k >= DispatchKey::StartOfSparseBackends && k <= DispatchKey::EndOfSparseBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfSparseBackends));
+  } else if (k >= DispatchKey::StartOfSparseCsrBackends && k <= DispatchKey::EndOfSparseCsrBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfSparseCsrBackends));
+  } else if (k >= DispatchKey::StartOfNestedTensorBackends && k <= DispatchKey::EndOfNestedTensorBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfNestedTensorBackends));
+  } else if (k >= DispatchKey::StartOfAutogradFunctionalityBackends &&
+             k <= DispatchKey::EndOfAutogradFunctionalityBackends) {
+    return static_cast<BackendComponent>(static_cast<uint8_t>(k) -
+                                         static_cast<uint8_t>(DispatchKey::StartOfAutogradFunctionalityBackends));
   } else {
     return BackendComponent::InvalidBit;
   }
@@ -687,39 +663,30 @@ BackendComponent toBackendComponent(DeviceType device_type);
 // This function relies on the invariant that the dispatch keys between
 // StartOfDenseBackends and EndOfRuntimeBackendKeys are ordered by backend
 // in the same order as `BackendComponent`.
-constexpr DispatchKey toRuntimePerBackendFunctionalityKey(
-    DispatchKey functionality_k,
-    BackendComponent backend_k) {
+constexpr DispatchKey toRuntimePerBackendFunctionalityKey(DispatchKey functionality_k, BackendComponent backend_k) {
   if (functionality_k == DispatchKey::Dense) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(DispatchKey::StartOfDenseBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfDenseBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   if (functionality_k == DispatchKey::Sparse) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(DispatchKey::StartOfSparseBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfSparseBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   if (functionality_k == DispatchKey::SparseCsr) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(DispatchKey::StartOfSparseCsrBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfSparseCsrBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   if (functionality_k == DispatchKey::Quantized) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(DispatchKey::StartOfQuantizedBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfQuantizedBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   if (functionality_k == DispatchKey::NestedTensor) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(DispatchKey::StartOfNestedTensorBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfNestedTensorBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   if (functionality_k == DispatchKey::AutogradFunctionality) {
-    return static_cast<DispatchKey>(
-        static_cast<uint8_t>(
-            DispatchKey::StartOfAutogradFunctionalityBackends) +
-        static_cast<uint8_t>(backend_k));
+    return static_cast<DispatchKey>(static_cast<uint8_t>(DispatchKey::StartOfAutogradFunctionalityBackends) +
+                                    static_cast<uint8_t>(backend_k));
   }
   return DispatchKey::Undefined;
 }

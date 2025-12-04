@@ -231,14 +231,18 @@ static PyObject * THPVariable_dim(PyObject* self, PyObject* args)
 // implemented on the python object to avoid dispatch overhead
 static PyObject * THPVariable_numel(PyObject* self, PyObject* args)
 {
+  // std::cout << "numel in python 029-3040342\n";
    HANDLE_TH_ERRORS
    if (check_has_torch_function(self)) {
+    std::cout << "handle function\n";
      return handle_torch_function(self, "numel", args);
    }
+   
    auto& self_ = THPVariable_Unpack(self);
    if (jit::tracer::isTracing()) {
      return wrap(jit::tracer::getNumelOf(self_));
    } else {
+    // std::cout << "calling numel\n";
      return py::cast(self_.sym_numel()).release().ptr();
    }
    END_HANDLE_TH_ERRORS

@@ -175,6 +175,7 @@ class FileManager:
         env_callable: Callable[[], Union[str, Dict[str, Any]]],
     ) -> None:
         filename = f"{self.install_dir}/{filename}"
+
         assert filename not in self.filenames, "duplicate file write {filename}"
         self.filenames.add(filename)
         if not self.dry_run:

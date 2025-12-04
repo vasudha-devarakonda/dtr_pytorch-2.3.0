@@ -18,7 +18,7 @@ from typing import (
     TypeVar,
     Union,
 )
-
+import re
 import yaml
 
 import torchgen.api.dispatcher as dispatcher
@@ -1590,7 +1590,7 @@ def get_native_function_definitions(
         registrations[kernel_namespace][namespace].extend(
             reg_gen(f),
         )
-
+    
     for kernel_namespace in ns_definitions:
         if len(ns_definitions[kernel_namespace]) == 0:
             continue
@@ -1624,7 +1624,15 @@ TORCH_LIBRARY_IMPL({namespace}, {dispatch_key}, m) {{
                 },
             ).split(newline)
         )
-
+    # if dispatch_key == DispatchKey.Checkpoint: 
+    #     definitions = [
+    #         d.replace(
+    #             "checkpoint_override_function",
+    #             "checkpoint_overrided_function"
+    #         )
+    #         for d in definitions
+    #         ]
+    #     print(definitions)
     return definitions
 
 

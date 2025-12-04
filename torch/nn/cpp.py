@@ -63,6 +63,7 @@ class ModuleWrapper(nn.Module):
                 setattr(self, attr, getattr(self.cpp_module, attr))
 
     def _apply(self, fn, recurse=True):
+        print("appdjoihwqfhfrwfwwfwffvgvbger\n")
         for param in self.parameters():
             # Tensors stored in modules are graph leaves, and we don't
             # want to create copy nodes, so we have to unpack the data.

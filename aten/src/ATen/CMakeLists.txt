@@ -176,6 +176,8 @@ file(GLOB flash_attention_src_hip_hip "native/transformers/hip/flash_attn/src/*.
 file(GLOB mem_eff_attention_cuda_cu "native/transformers/cuda/mem_eff_attention/*.cu")
 file(GLOB mem_eff_attention_cuda_kernels_cu "native/transformers/cuda/mem_eff_attention/kernels/*.cu")
 file(GLOB mem_eff_attention_cuda_cpp "native/transformers/cuda/mem_eff_attention/*.cpp")
+message(STATUS "-------------CMAKE_SOURCE_DIR = ${CMAKE_SOURCE_DIR}----------------")
+list(APPEND native_cpp "${CMAKE_SOURCE_DIR}/aten/src/ATen/native/Checkpoint.cpp")
 
 if(USE_FLASH_ATTENTION)
   list(APPEND native_transformers_cuda_cu ${flash_attention_cuda_cu})
@@ -549,7 +551,6 @@ list(APPEND ATen_VULKAN_INCLUDE ${ATen_CPU_INCLUDE})
 # the same way as libATen_cuda.so)
 set(ATen_CPU_SRCS ${all_cpu_cpp})
 list(APPEND ATen_CPU_DEPENDENCY_LIBS ATEN_CPU_FILES_GEN_LIB)
-
 if(USE_CUDA)
   set(ATen_NVRTC_STUB_SRCS ${cuda_nvrtc_stub_cpp})
   list(APPEND ATen_CUDA_DEPENDENCY_LIBS ATEN_CUDA_FILES_GEN_LIB)

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <c10/core/Allocator.h>
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
@@ -30,6 +29,7 @@
 #include <c10/util/irange.h>
 #include <c10/util/safe_numerics.h>
 #include <c10/util/typeid.h>
+#include <iostream>
 
 #include <algorithm>
 #include <atomic>
@@ -601,14 +601,14 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * Return a reference to the sizes of this tensor.  This reference remains
    * valid as long as the tensor is live and not resized.
    */
-  IntArrayRef sizes() const {
+  virtual IntArrayRef sizes() const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return sizes_custom();
     }
     return sizes_and_strides_.sizes_arrayref();
   }
 
-  SymIntArrayRef sym_sizes() const {
+  virtual SymIntArrayRef sym_sizes() const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return sym_sizes_custom();
     }
@@ -684,14 +684,16 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * is no longer true; numel always accurately reports the product
    * of sizes of a tensor.
    */
-  int64_t numel() const {
+  virtual int64_t numel() const {
+    // std::cout << "beforeeeee---===-=-=\n";
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return numel_custom();
     }
+    // std::cout << "tensor numel" << numel_<<"\n";
     return numel_;
   }
 
-  c10::SymInt sym_numel() const {
+  virtual c10::SymInt sym_numel() const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return sym_numel_custom();
     }
@@ -717,14 +719,17 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * Return the number of dimensions of this tensor.  Note that 0-dimension
    * represents a Tensor that is a Scalar, e.g., one that has a single element.
    */
-  int64_t dim() const {
+  virtual int64_t dim() const {
+
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return dim_custom();
     }
+    // std::cout << "dim " << sizes_and_strides_.size() << "\n";
     return static_cast<int64_t>(sizes_and_strides_.size());
   }
 
   int64_t dim_default() const {
+
     if (has_symbolic_sizes_strides_) {
       return static_cast<int64_t>(symbolic_shape_meta().sizes_.size());
     } else {
@@ -773,14 +778,14 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * Return a reference to the strides of this tensor.  This reference remains
    * valid as long as the tensor is live and not restrided.
    */
-  IntArrayRef strides() const {
+  virtual IntArrayRef strides() const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomStrides))) {
       return strides_custom();
     }
     return sizes_and_strides_.strides_arrayref();
   }
 
-  c10::SymIntArrayRef sym_strides() const {
+  virtual c10::SymIntArrayRef sym_strides() const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomStrides))) {
       return sym_strides_custom();
     }
@@ -881,7 +886,7 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * NOTE: if you know wrapping is unnecessary, do sizes()[d] instead; it will
    * be faster
    */
-  int64_t size(int64_t d) const {
+  virtual int64_t size(int64_t d) const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return size_custom(d);
     }
@@ -889,7 +894,7 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
     return sizes_and_strides_.size_at_unchecked(d);
   }
 
-  c10::SymInt sym_size(int64_t d) const {
+  virtual c10::SymInt sym_size(int64_t d) const {
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomSizes))) {
       return sym_size_custom(d);
     }
@@ -905,7 +910,8 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * NOTE: if you know wrapping is unnecessary, do sizes()[d] instead; it will
    * be faster
    */
-  int64_t stride(int64_t d) const {
+  virtual int64_t stride(int64_t d) const {
+    std::cout << "calculating stride\n";
     d = maybe_wrap_dim(d, dim(), false);
     if (C10_UNLIKELY(matches_policy(SizesStridesPolicy::CustomStrides))) {
       // TODO: provide stride_custom, symmetrically with size_custom.
@@ -997,15 +1003,11 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
   /**
    * True if this tensor has storage. See storage() for details.
    */
-#ifdef DEBUG
-  // Allow subclasses to check that their storage_ is never getting set in debug
-  // builds.
-  virtual
-#else
-  TENSORIMPL_MAYBE_VIRTUAL
-#endif
-      bool
-      has_storage() const
+
+  virtual bool has_storage() const;
+  virtual void test() const {
+    std::cout << "tetsing the virtual\n";
+  }
   // NOTE: we devirtualize this because it arguably shouldn't be an
   // error just to ask subclasses if they have storage.
   // This used to throw for most subclasses, but OpaqueTensorImpl
@@ -1016,7 +1018,7 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
     return storage_;
   }
 #else
-      ;
+  ;
 #endif
 
   /**
@@ -1255,6 +1257,9 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
     TORCH_CHECK(device_opt_.has_value(), "tensor does not have a device");
     // See NOTE [c10::optional operator usage in CUDA]
     return *device_opt_;
+  }
+  c10::optional<c10::Device> optional_device() const {
+    return device_opt_;
   }
 
  public:
@@ -1649,7 +1654,8 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * Returns the TypeMeta of a tensor, which describes what data type
    * it is (e.g., int, float, ...)
    */
-  const caffe2::TypeMeta dtype() const {
+  virtual const caffe2::TypeMeta dtype() const {
+    // std::cout << "calling the data tpe from here \n";
     return data_type_;
   }
 
@@ -1757,6 +1763,7 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
         !matches_policy(SizesStridesPolicy::CustomSizes),
         "set_size() called on tensor with dynamic shapes or customized size behavior")
     sizes_and_strides_.size_at(dim) = new_size;
+    std::cout << "set size " << sizes_and_strides_.size_at(dim) << "\n";
     refresh_numel();
     refresh_contiguous();
   }
@@ -2020,6 +2027,13 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
    * compatible with SparseCUDA.
    */
   inline bool has_compatible_shallow_copy_type(DispatchKeySet from) {
+    if (key_set_ == from) {
+      return true;
+    }
+    if (key_set_.has(DispatchKey::Checkpoint) ||
+        from.has(DispatchKey::Checkpoint)) {
+      return false;
+    }
     auto is_dense = [](DispatchKeySet ts) {
       constexpr auto dense_backends = DispatchKeySet(
           {BackendComponent::CPUBit,
@@ -2045,10 +2059,8 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
           DispatchKeySet(DispatchKey::SparseCsr);
       return ts.has_any(sparse_compressed_k);
     };
-    return (key_set_ == from) || (is_dense(key_set_) && is_dense(from)) ||
-        (is_sparse(key_set_) && is_sparse(from)) ||
-        (is_sparse_compressed(key_set_) && is_sparse_compressed(from));
-    ;
+    return (is_dense(key_set_) && is_dense(from)) ||
+        (is_sparse(key_set_) && is_sparse(from));
   }
 
  private:
@@ -2277,8 +2289,9 @@ struct C10_API TensorImpl : public c10::intrusive_ptr_target {
         auto size = numel_;
         auto dtor = data_type_.placementDelete();
         auto data_ptr = allocator->allocate(numel_ * data_type_.itemsize());
-        storage_.set_data_ptr_noswap(PlacementDeleteContext::makeDataPtr(
-            std::move(data_ptr), dtor, size, storage_.device()));
+        storage_.set_data_ptr_noswap(
+            PlacementDeleteContext::makeDataPtr(
+                std::move(data_ptr), dtor, size, storage_.device()));
         data_type_.placementNew()(storage_.mutable_data(), numel_);
       } else {
         // For fundamental type, new and delete is easier.

@@ -20,6 +20,7 @@ class Type(Function):
 
     @staticmethod
     def backward(ctx, grad_output):
+        print("backward starts =====")
         if ctx.input_device == -1:
             return grad_output.type(ctx.input_type), None
         else:

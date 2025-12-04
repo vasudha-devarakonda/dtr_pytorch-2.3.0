@@ -88,7 +88,8 @@ const char* toString(DispatchKey t) {
       return "CustomRNGKeyId";
     case DispatchKey::MkldnnCPU:
       return "MkldnnCPU";
-
+    case DispatchKey::Checkpoint:
+      return "Checkpoint";
     case DispatchKey::Sparse:
       return "Sparse";
 
@@ -364,7 +365,7 @@ c10::DispatchKey parseDispatchKey(const std::string& k) {
       {"AutogradPrivateUse1", c10::DispatchKey::AutogradPrivateUse1},
       {"AutogradPrivateUse2", c10::DispatchKey::AutogradPrivateUse2},
       {"AutogradPrivateUse3", c10::DispatchKey::AutogradPrivateUse3},
-
+      {"Checkpoint", c10::DispatchKey::Checkpoint},
       {"Autograd", c10::DispatchKey::Autograd},
       {"CompositeImplicitAutograd",
        c10::DispatchKey::CompositeImplicitAutograd},

@@ -120,9 +120,7 @@ TORCH_API AutogradMeta* materialize_autograd_meta(const at::TensorBase&);
 
 /// Set the gradient accumulator of the `Variable`. This is only applicable to
 /// leaf variables. Interior variables should call `set_gradient_edge()`.
-TORCH_API void set_grad_accumulator(
-    const Variable&,
-    std::weak_ptr<Node> grad_accumulator);
+TORCH_API void set_grad_accumulator(const Variable&, std::weak_ptr<Node> grad_accumulator);
 
 /// Attempts to get a pointer to the gradient accumulator of the `Variable`,
 /// if it still exists. If the gradient accumulator function has been
@@ -167,30 +165,21 @@ TORCH_API Node* grad_fn_unsafe(const Variable&);
 
 /// Increments the version count of this `Variable`.
 TORCH_API void bump_version(const Variable&);
-TORCH_API void set_version_counter(
-    const Variable&,
-    const c10::VariableVersion& version_counter);
+TORCH_API void set_version_counter(const Variable&, const c10::VariableVersion& version_counter);
 
 /// Retrieves this `Variable`s version counter.
 TORCH_API const c10::VariableVersion& version_counter(const Variable&);
 
 TORCH_API void set_name(const Variable&, const std::string& name);
 
-TORCH_API void add_hook(
-    const at::TensorBase&,
-    std::unique_ptr<FunctionPreHook> hook);
+TORCH_API void add_hook(const at::TensorBase&, std::unique_ptr<FunctionPreHook> hook);
 TORCH_API std::vector<std::unique_ptr<FunctionPreHook>>& hooks(const Variable&);
 TORCH_API void clear_hooks(const at::TensorBase&);
 
-TORCH_API void set_post_acc_grad_hooks(
-    const at::TensorBase&,
-    std::unique_ptr<PostAccumulateGradHook> dict);
-TORCH_API std::unique_ptr<PostAccumulateGradHook>& post_acc_grad_hooks(
-    const Variable&);
+TORCH_API void set_post_acc_grad_hooks(const at::TensorBase&, std::unique_ptr<PostAccumulateGradHook> dict);
+TORCH_API std::unique_ptr<PostAccumulateGradHook>& post_acc_grad_hooks(const Variable&);
 
-TORCH_API void create_cpp_hook(
-    const at::TensorBase&,
-    bool is_retains_grad_hooks = false);
+TORCH_API void create_cpp_hook(const at::TensorBase&, bool is_retains_grad_hooks = false);
 } // namespace impl
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,10 +253,8 @@ struct TORCH_API AutogradMeta : public c10::AutogradMetaInterface {
   /// leaf variables that want to accumulate gradients, and false for all other
   /// variables.
   void set_requires_grad(bool requires_grad, at::TensorImpl* self_impl) final {
-    TORCH_CHECK(
-        !requires_grad ||
-            isDifferentiableType(at::typeMetaToScalarType(self_impl->dtype())),
-        "Only Tensors of floating point and complex dtype can require gradients");
+    TORCH_CHECK(!requires_grad || isDifferentiableType(at::typeMetaToScalarType(self_impl->dtype())),
+                "Only Tensors of floating point and complex dtype can require gradients");
     requires_grad_ = requires_grad;
   }
 
@@ -284,19 +271,14 @@ struct TORCH_API AutogradMeta : public c10::AutogradMetaInterface {
     return grad_;
   }
 
-  const Variable& fw_grad(uint64_t level, const at::TensorBase& self)
-      const override;
+  const Variable& fw_grad(uint64_t level, const at::TensorBase& self) const override;
 
-  void set_fw_grad(
-      const at::TensorBase& new_grad,
-      const at::TensorBase& self,
-      uint64_t level,
-      bool is_inplace_op) override;
+  void set_fw_grad(const at::TensorBase& new_grad,
+                   const at::TensorBase& self,
+                   uint64_t level,
+                   bool is_inplace_op) override;
 
-  AutogradMeta(
-      at::TensorImpl* self_impl = nullptr,
-      bool requires_grad = false,
-      Edge gradient_edge = Edge())
+  AutogradMeta(at::TensorImpl* self_impl = nullptr, bool requires_grad = false, Edge gradient_edge = Edge())
       : grad_fn_(std::move(gradient_edge.function)),
 
         output_nr_(gradient_edge.input_nr) {
@@ -305,9 +287,7 @@ struct TORCH_API AutogradMeta : public c10::AutogradMetaInterface {
       TORCH_INTERNAL_ASSERT(self_impl);
       set_requires_grad(requires_grad, self_impl);
     }
-    TORCH_CHECK(
-        !grad_fn_ || !requires_grad_,
-        "requires_grad should be false if grad_fn is set");
+    TORCH_CHECK(!grad_fn_ || !requires_grad_, "requires_grad should be false if grad_fn is set");
   }
 
   ~AutogradMeta() override {
@@ -350,9 +330,8 @@ struct TORCH_API ViewFunc {
   virtual at::Tensor operator()(const at::Tensor&) const = 0;
   /// Returns a clone of this ViewFunc, optionally with the specified saved
   /// state.
-  virtual std::unique_ptr<ViewFunc> clone_and_set(
-      std::optional<std::vector<c10::SymInt>> = c10::nullopt,
-      std::optional<std::vector<at::Tensor>> = c10::nullopt) const = 0;
+  virtual std::unique_ptr<ViewFunc> clone_and_set(std::optional<std::vector<c10::SymInt>> = c10::nullopt,
+                                                  std::optional<std::vector<at::Tensor>> = c10::nullopt) const = 0;
 
  protected:
   /// Sets the values of any SymInts in the saved state. The input vector size
@@ -367,11 +346,9 @@ struct TORCH_API ViewFunc {
 
 /// ViewFunc that represents a chain of two ViewFuncs.
 struct ChainedViewFunc : public ViewFunc {
-  ChainedViewFunc(
-      std::unique_ptr<ViewFunc> first,
-      std::unique_ptr<ViewFunc> second)
+  ChainedViewFunc(std::unique_ptr<ViewFunc> first, std::unique_ptr<ViewFunc> second)
       : first(std::move(first)), second(std::move(second)) {}
-  virtual ~ChainedViewFunc() override{};
+  virtual ~ChainedViewFunc() override {};
   virtual std::vector<c10::SymInt> get_symints() const override;
   virtual size_t num_symints() const override {
     return first->num_symints() + second->num_symints();
@@ -381,9 +358,8 @@ struct ChainedViewFunc : public ViewFunc {
     return first->num_tensors() + second->num_tensors();
   }
   virtual at::Tensor operator()(const at::Tensor&) const override;
-  virtual std::unique_ptr<ViewFunc> clone_and_set(
-      std::optional<std::vector<c10::SymInt>> = c10::nullopt,
-      std::optional<std::vector<at::Tensor>> = c10::nullopt) const override;
+  virtual std::unique_ptr<ViewFunc> clone_and_set(std::optional<std::vector<c10::SymInt>> = c10::nullopt,
+                                                  std::optional<std::vector<at::Tensor>> = c10::nullopt) const override;
 
  private:
   std::unique_ptr<ViewFunc> first;
@@ -393,7 +369,7 @@ struct ChainedViewFunc : public ViewFunc {
 /// ViewFunc that errors with a specified error message when called.
 struct ErroringViewFunc : public ViewFunc {
   ErroringViewFunc(const std::string& error_msg) : error_msg(error_msg) {}
-  virtual ~ErroringViewFunc() override{};
+  virtual ~ErroringViewFunc() override {};
   virtual at::Tensor operator()(const at::Tensor&) const override {
     TORCH_CHECK(false, error_msg);
   }
@@ -429,15 +405,12 @@ struct TORCH_API ViewInfo {
   }
 
   const ViewFunc& view_fn() const {
-    TORCH_CHECK(
-        has_view_fn(), "Can only access the view function if it exists.");
+    TORCH_CHECK(has_view_fn(), "Can only access the view function if it exists.");
     return *view_fn_;
   }
 
   std::function<Variable(const Variable&)> rev_view_fn() const {
-    TORCH_CHECK(
-        has_view_fn(),
-        "Can only access the reverse view function if it exists.");
+    TORCH_CHECK(has_view_fn(), "Can only access the reverse view function if it exists.");
     return rev_view_fn_;
   }
 
@@ -449,19 +422,13 @@ struct TORCH_API ViewInfo {
   /// set the optional view_fn_ when it is not provided. The "view_func", if
   /// provided, should be a function that allows to re-do the view between
   /// "base" and "tensor".
-  ViewInfo chain(
-      const Variable& base,
-      const Variable& tensor,
-      std::unique_ptr<ViewFunc> view_func = nullptr,
-      std::function<Variable(const Variable&)> rev_view_func = nullptr) const;
+  ViewInfo chain(const Variable& base,
+                 const Variable& tensor,
+                 std::unique_ptr<ViewFunc> view_func = nullptr,
+                 std::function<Variable(const Variable&)> rev_view_func = nullptr) const;
 
-  ViewInfo(
-      Variable base,
-      std::unique_ptr<ViewFunc> view_fn,
-      std::function<Variable(const Variable&)> rev_view_fn)
-      : base_(std::move(base)),
-        view_fn_(std::move(view_fn)),
-        rev_view_fn_(std::move(rev_view_fn)) {
+  ViewInfo(Variable base, std::unique_ptr<ViewFunc> view_fn, std::function<Variable(const Variable&)> rev_view_fn)
+      : base_(std::move(base)), view_fn_(std::move(view_fn)), rev_view_fn_(std::move(rev_view_fn)) {
     TORCH_CHECK(base_.defined(), "base is undefined");
   }
 };
@@ -646,13 +613,7 @@ struct TORCH_API ViewInfo {
 /// - Inference_MODE should be set when a view of normal tensor is created in
 /// InferenceMode.
 /// - DEFAULT is for all other cases
-enum class CreationMeta : uint8_t {
-  DEFAULT,
-  IN_CUSTOM_FUNCTION,
-  MULTI_OUTPUT_NODE,
-  NO_GRAD_MODE,
-  INFERENCE_MODE
-};
+enum class CreationMeta : uint8_t { DEFAULT, IN_CUSTOM_FUNCTION, MULTI_OUTPUT_NODE, NO_GRAD_MODE, INFERENCE_MODE };
 
 /// Handles correctly propagating CreationMeta when a new view is created from a
 /// previous view. In general, we don't want the new view to be _less_
@@ -662,22 +623,16 @@ enum class CreationMeta : uint8_t {
 /// A CreationMeta value of INFERENCE_MODE is currently the most restrictive, so
 /// it takes precedence in propagation. If this changes, the logic here will
 /// need to be updated to properly handle the new semantics.
-inline CreationMeta propagate_creation_meta(
-    CreationMeta prev_view_creation_meta,
-    CreationMeta new_view_creation_meta) {
+inline CreationMeta propagate_creation_meta(CreationMeta prev_view_creation_meta, CreationMeta new_view_creation_meta) {
   return (new_view_creation_meta == CreationMeta::DEFAULT)
       ? prev_view_creation_meta
-      : (prev_view_creation_meta == CreationMeta::INFERENCE_MODE
-             ? prev_view_creation_meta
-             : new_view_creation_meta);
+      : (prev_view_creation_meta == CreationMeta::INFERENCE_MODE ? prev_view_creation_meta : new_view_creation_meta);
 }
 
 /// Unified function to handle error checking when rebase happens
 /// indirect=true means that the caller is not doing the inplace, but the
 /// inplace happened somewhere else.
-TORCH_API void handle_view_on_rebase(
-    DifferentiableViewMeta* diff_view_meta,
-    bool indirect = false);
+TORCH_API void handle_view_on_rebase(DifferentiableViewMeta* diff_view_meta, bool indirect = false);
 
 struct TORCH_API DifferentiableViewMeta : public AutogradMeta {
  private:
@@ -709,8 +664,7 @@ struct TORCH_API DifferentiableViewMeta : public AutogradMeta {
   /// requires_grad is a backward AD field so we only use the view specific
   /// logic for backward differentiable views
   bool requires_grad() const override {
-    return requires_grad_ || grad_fn_ ||
-        (has_bw_view() && get_backward_view().base_.requires_grad());
+    return requires_grad_ || grad_fn_ || (has_bw_view() && get_backward_view().base_.requires_grad());
   }
 
   bool shared_view_info() const {
@@ -722,32 +676,27 @@ struct TORCH_API DifferentiableViewMeta : public AutogradMeta {
   }
 
   const ViewInfo& get_backward_view() const {
-    TORCH_CHECK(
-        has_bw_view(), "backward view info can only exist for backward views.");
+    TORCH_CHECK(has_bw_view(), "backward view info can only exist for backward views.");
     return backward_info_.value();
   }
 
   uint32_t get_attr_version() const {
-    TORCH_CHECK(
-        has_bw_view(), "attr_version can only exist for backward views.");
+    TORCH_CHECK(has_bw_view(), "attr_version can only exist for backward views.");
     return attr_version_;
   }
 
   void set_attr_version(uint32_t new_attr_version) {
-    TORCH_CHECK(
-        has_bw_view(), "attr_version can only exist for backward views.");
+    TORCH_CHECK(has_bw_view(), "attr_version can only exist for backward views.");
     attr_version_ = new_attr_version;
   }
 
   CreationMeta get_creation_meta() const {
-    TORCH_CHECK(
-        has_bw_view(), "creation_meta can only exist for backward views.");
+    TORCH_CHECK(has_bw_view(), "creation_meta can only exist for backward views.");
     return creation_meta_;
   }
 
   void set_creation_meta(CreationMeta new_creation_meta) {
-    TORCH_CHECK(
-        has_bw_view(), "creation_meta can only exist for backward views.");
+    TORCH_CHECK(has_bw_view(), "creation_meta can only exist for backward views.");
     creation_meta_ = new_creation_meta;
   }
 
@@ -756,20 +705,16 @@ struct TORCH_API DifferentiableViewMeta : public AutogradMeta {
   }
 
   const ViewInfo& get_forward_view() const {
-    TORCH_CHECK(
-        has_fw_view(), "forward view info can only exist for forward views.");
-    TORCH_CHECK(
-        !shared_view_info_ || has_bw_view(),
-        "forward view info can only exist for forward views.");
+    TORCH_CHECK(has_fw_view(), "forward view info can only exist for forward views.");
+    TORCH_CHECK(!shared_view_info_ || has_bw_view(), "forward view info can only exist for forward views.");
     return shared_view_info_ ? backward_info_.value() : forward_info_.value();
   }
 
-  DifferentiableViewMeta(
-      at::TensorImpl* self_impl,
-      c10::optional<ViewInfo> backward_info,
-      c10::optional<ViewInfo> forward_info,
-      bool shared_view_info,
-      CreationMeta creation_meta = CreationMeta::DEFAULT);
+  DifferentiableViewMeta(at::TensorImpl* self_impl,
+                         c10::optional<ViewInfo> backward_info,
+                         c10::optional<ViewInfo> forward_info,
+                         bool shared_view_info,
+                         CreationMeta creation_meta = CreationMeta::DEFAULT);
 };
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -794,33 +739,27 @@ struct TORCH_API DifferentiableViewMeta : public AutogradMeta {
 
 // See NOTE [ Autograd View Variables ] for details.
 // Differentiable view. Track history with DifferentiableViewMeta.
-inline Variable make_variable_differentiable_view(
-    const at::Tensor& data,
-    c10::optional<ViewInfo> backward_info,
-    c10::optional<ViewInfo> forward_info,
-    bool shared_view_info,
-    CreationMeta creation_meta,
-    bool allow_tensor_metadata_change = true) {
+inline Variable make_variable_differentiable_view(const at::Tensor& data,
+                                                  c10::optional<ViewInfo> backward_info,
+                                                  c10::optional<ViewInfo> forward_info,
+                                                  bool shared_view_info,
+                                                  CreationMeta creation_meta,
+                                                  bool allow_tensor_metadata_change = true) {
   if (data.defined()) {
-    TORCH_CHECK(
-        data.getIntrusivePtr()->autograd_meta() == nullptr,
-        "Attempted to make a tensor into a differentiable view, but the "
-        "tensor already had autograd metadata associated with it.  If you are "
-        "using a __torch_dispatch__ mode, the most common cause for this "
-        "problem is that you used torch.overrides.enable_reentrant_dispatch() "
-        "improperly; tensors created within the extent of reentrant dispatch "
-        "MUST NOT be directly returned from __torch_dispatch__; instead, they "
-        "must be wrapped into fresh tensors that serve as the output.  If you "
-        "are not using wrappers, you probably don't need reentrant dispatch.  "
-        "If this doesn't seem applicable, please file a bug to PyTorch.");
+    TORCH_CHECK(data.getIntrusivePtr()->autograd_meta() == nullptr,
+                "Attempted to make a tensor into a differentiable view, but the "
+                "tensor already had autograd metadata associated with it.  If you are "
+                "using a __torch_dispatch__ mode, the most common cause for this "
+                "problem is that you used torch.overrides.enable_reentrant_dispatch() "
+                "improperly; tensors created within the extent of reentrant dispatch "
+                "MUST NOT be directly returned from __torch_dispatch__; instead, they "
+                "must be wrapped into fresh tensors that serve as the output.  If you "
+                "are not using wrappers, you probably don't need reentrant dispatch.  "
+                "If this doesn't seem applicable, please file a bug to PyTorch.");
     at::TensorImpl* data_impl = data.unsafeGetTensorImpl();
     data_impl->set_allow_tensor_metadata_change(allow_tensor_metadata_change);
     data_impl->set_autograd_meta(std::make_unique<DifferentiableViewMeta>(
-        data_impl,
-        std::move(backward_info),
-        std::move(forward_info),
-        shared_view_info,
-        creation_meta));
+        data_impl, std::move(backward_info), std::move(forward_info), shared_view_info, creation_meta));
     return data;
   }
   return Variable();
@@ -828,10 +767,9 @@ inline Variable make_variable_differentiable_view(
 
 // See NOTE [ Autograd View Variables ] for details.
 // Non-differentiable view. Just share version counter.
-inline Variable make_variable_non_differentiable_view(
-    const Variable& base,
-    const at::Tensor& data,
-    bool allow_tensor_metadata_change = true) {
+inline Variable make_variable_non_differentiable_view(const Variable& base,
+                                                      const at::Tensor& data,
+                                                      bool allow_tensor_metadata_change = true) {
   if (data.defined()) {
     // Currently all of non-differentiable view ops(detach/_indices/_values)
     // share the same TensorImpl as their base Tensor. Thus a new TensorImpl
@@ -853,29 +791,24 @@ inline Variable make_variable_non_differentiable_view(
 /// TODO: Eliminate this function as much as possible, as it can be expressed
 /// more clearly as detach() or a no-op in most call sites (especially when
 /// there is only one use of the variable).
-inline Variable make_variable(
-    at::Tensor data,
-    bool requires_grad = false,
-    bool allow_tensor_metadata_change = true) {
+inline Variable make_variable(at::Tensor data, bool requires_grad = false, bool allow_tensor_metadata_change = true) {
   if (data.defined()) {
-    if (data.getIntrusivePtr().use_count() == 1 &&
-        data.getIntrusivePtr()->unique_version()) {
+    if (data.getIntrusivePtr().use_count() == 1 && data.getIntrusivePtr()->unique_version()) {
       auto data_impl = data.unsafeReleaseIntrusivePtr();
       data_impl->set_allow_tensor_metadata_change(allow_tensor_metadata_change);
       if (requires_grad) {
-        data_impl->set_autograd_meta(
-            std::make_unique<AutogradMeta>(data_impl.get(), requires_grad));
+        data_impl->set_autograd_meta(std::make_unique<AutogradMeta>(data_impl.get(), requires_grad));
       } else {
         data_impl->set_autograd_meta(nullptr);
       }
       return Variable(std::move(data_impl));
     } else {
+      std::cout << "0309deeoee3093\n";
       auto data_impl_copy = data.getIntrusivePtr()->shallow_copy_and_detach(
           /*version_counter=*/0,
           /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
       if (requires_grad) {
-        data_impl_copy->set_autograd_meta(std::make_unique<AutogradMeta>(
-            data_impl_copy.get(), requires_grad));
+        data_impl_copy->set_autograd_meta(std::make_unique<AutogradMeta>(data_impl_copy.get(), requires_grad));
       } else {
         data_impl_copy->set_autograd_meta(nullptr);
       }
@@ -889,53 +822,53 @@ inline Variable make_variable(
 /// `TensorImpl`. `gradient_edge` should be a (function, input_nr) pair
 /// specifying the function in the autograd graph, and what particular input of
 /// that function, this variable is connected to.
-inline Variable make_variable(
-    const at::Tensor& data,
-    Edge gradient_edge,
-    bool allow_tensor_metadata_change = true) {
-  if (data.defined()) {
-    auto data_impl_copy = data.getIntrusivePtr()->shallow_copy_and_detach(
-        /*version_counter=*/0,
-        /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
-    data_impl_copy->set_autograd_meta(std::make_unique<AutogradMeta>(
-        data_impl_copy.get(), false, std::move(gradient_edge)));
-    return Variable(data_impl_copy);
+Variable make_variable_from_checkpoint_tensor(const at::Tensor& data,
+                                                  Edge gradient_edge,
+                                                  bool allow_tensor_metadata_change = true);
+inline Variable make_variable(const at::Tensor& data, Edge gradient_edge, bool allow_tensor_metadata_change = true) {
+  if (!data.defined()) {
+    return Variable();
   }
-  return Variable();
+  auto* impl = data.unsafeGetTensorImpl();
+  if (impl->key_set().has(c10::DispatchKey::Checkpoint)) {
+    return make_variable_from_checkpoint_tensor(data, gradient_edge, allow_tensor_metadata_change);
+  }
+  auto data_impl_copy = impl->shallow_copy_and_detach(
+      /*version_counter=*/0,
+      /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
+
+  data_impl_copy->set_autograd_meta(
+      std::make_unique<AutogradMeta>(data_impl_copy.get(), false, std::move(gradient_edge)));
+
+  return Variable(data_impl_copy);
 }
 
 struct VariableHooks final : at::impl::VariableHooksInterface {
   at::TensorBase tensor_data(const at::TensorBase&) const override;
   at::TensorBase variable_data(const at::TensorBase&) const override;
-  const std::shared_ptr<torch::autograd::Node>& grad_fn(
-      const at::TensorBase&) const override;
-  unsigned _register_hook(
-      const at::TensorBase&,
-      std::function<at::TensorBase(const at::TensorBase&)> hook) const override;
+  const std::shared_ptr<torch::autograd::Node>& grad_fn(const at::TensorBase&) const override;
+  unsigned _register_hook(const at::TensorBase&,
+                          std::function<at::TensorBase(const at::TensorBase&)> hook) const override;
   void remove_hook(const at::TensorBase&, unsigned pos) const override;
   bool is_view(const at::TensorBase&) const override;
   const at::TensorBase& base(const at::TensorBase&) const override;
   const std::string& name(const at::TensorBase&) const override;
   bool is_leaf(const at::TensorBase&) const override;
   int64_t output_nr(const at::TensorBase&) const override;
-  void set_data(const at::TensorBase& self, const at::TensorBase& new_data)
-      const override;
+  void set_data(const at::TensorBase& self, const at::TensorBase& new_data) const override;
   at::TensorBase data(const at::TensorBase& self) const override;
   int64_t _version(const at::TensorBase& self) const override;
   void retain_grad(const at::TensorBase& self) const override;
   bool retains_grad(const at::TensorBase& self) const override;
-  void _backward(
-      const at::Tensor& self,
-      at::TensorList inputs,
-      const c10::optional<at::Tensor>& gradient,
-      c10::optional<bool> keep_graph,
-      bool create_graph) const override;
-  void requires_grad_(const at::TensorBase& self, bool _requires_grad)
-      const override;
-  void basic_autograd_not_implemented_fallback(
-      const c10::OperatorHandle& op,
-      c10::DispatchKeySet dispatch_keys,
-      torch::jit::Stack* stack) const override;
+  void _backward(const at::Tensor& self,
+                 at::TensorList inputs,
+                 const c10::optional<at::Tensor>& gradient,
+                 c10::optional<bool> keep_graph,
+                 bool create_graph) const override;
+  void requires_grad_(const at::TensorBase& self, bool _requires_grad) const override;
+  void basic_autograd_not_implemented_fallback(const c10::OperatorHandle& op,
+                                               c10::DispatchKeySet dispatch_keys,
+                                               torch::jit::Stack* stack) const override;
 };
 
 namespace utils {

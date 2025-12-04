@@ -116,7 +116,7 @@ class DispatchKey(Enum):
     Functionalize = auto()
     TESTING_ONLY_GenericWrapper = auto()
     TESTING_ONLY_GenericMode = auto()
-
+    Checkpoint = auto()
     ADInplaceOrView = auto()
     Autograd = auto()
     CompositeImplicitAutograd = auto()
@@ -136,6 +136,7 @@ class DispatchKey(Enum):
     XPU = auto()
     HPU = auto()
     VE = auto()
+
     Lazy = auto()
     Meta = auto()
     PrivateUse1 = auto()
@@ -266,6 +267,7 @@ dispatch_keys = [
     DispatchKey.SparseCsrCPU,
     DispatchKey.MkldnnCPU,
     DispatchKey.CUDA,
+    DispatchKey.Checkpoint,
     DispatchKey.MPS,
     DispatchKey.SparseCUDA,
     DispatchKey.SparseCsrCUDA,

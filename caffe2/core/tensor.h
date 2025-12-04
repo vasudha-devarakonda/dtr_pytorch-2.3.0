@@ -640,6 +640,7 @@ class TORCH_API TensorPrinter {
 
 template <class T>
 void TensorPrinter::Print(const Tensor& tensor) {
+  std::cout << "=w=========\n"
   std::stringstream values_stream;
   // One most likely doesn't want to print int64-number of items for visual
   // inspection, so we cast down to int here.

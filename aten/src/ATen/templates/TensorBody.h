@@ -334,6 +334,7 @@ class TORCH_API Tensor: public TensorBase {
     return to(options().device(c10::DeviceType::CPU), /*non_blocking*/ false, /*copy*/ false);
   }
 
+
   // TODO: The Python version also accepts arguments
   Tensor cuda() const {
     return to(options().device(c10::DeviceType::CUDA), /*non_blocking*/ false, /*copy*/ false);

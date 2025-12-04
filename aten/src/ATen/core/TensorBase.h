@@ -150,14 +150,17 @@ class TORCH_API TensorBase {
   TensorBase to(at::TensorOptions options={}, bool non_blocking=false, bool copy=false, c10::optional<at::MemoryFormat> memory_format=c10::nullopt) const;
 
   bool is_complex() const {
+    // std::cout << "is complex\n";
     return at::isComplexType(this->scalar_type());
   }
 
   bool is_floating_point() const {
+    // std::cout << "floating\n";
     return at::isFloatingType(this->scalar_type());
   }
 
   bool is_signed() const {
+    // std::cout << "is signed\n";
     return at::isSignedType(this->scalar_type());
   }
 
@@ -191,6 +194,7 @@ class TORCH_API TensorBase {
     return impl_.release();
   }
   const c10::intrusive_ptr<TensorImpl, UndefinedTensorImpl>& getIntrusivePtr() const {
+    // std::cout << " getting intrusive prt \n";
     return impl_;
   }
 
@@ -315,6 +319,7 @@ class TORCH_API TensorBase {
   }
 
   c10::SymInt sym_numel() const {
+    // std::cout << "sym numel" << impl_->sym_numel() << "\n";
     return impl_->sym_numel();
   }
 
@@ -337,6 +342,7 @@ class TORCH_API TensorBase {
     return impl_->key_set();
   }
   ScalarType scalar_type() const {
+    // std::cout << "ppppppp getting the scalar" << typeMetaToScalarType(impl_->dtype()) <<"\n";
     return typeMetaToScalarType(impl_->dtype());
   }
   bool has_storage() const {
@@ -420,7 +426,9 @@ class TORCH_API TensorBase {
     // NB: this is not a native function to avoid dispatching overhead.
     return impl_->get_device();
   }
-
+  // c10::optional<Device> Tensor::optional_device() const {
+  //   return impl_->optional_device();
+  // }
   /// Returns if a `Tensor` has CPU backend.
   bool is_cpu() const {
     // NB: this is not a native function to avoid dispatching overhead.

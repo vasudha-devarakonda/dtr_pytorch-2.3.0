@@ -774,6 +774,7 @@ class Module:
             "to report this bug.")
 
     def _apply(self, fn, recurse=True):
+        # print("\nfjkwjb;albje======================================\n===============================\nfvjwev\n")
         if recurse:
             for module in self.children():
                 module._apply(fn)
@@ -800,8 +801,10 @@ class Module:
             # Tensors stored in modules are graph leaves, and we don't want to
             # track autograd history of `param_applied`, so we have to use
             # `with torch.no_grad():`
+            
             with torch.no_grad():
                 param_applied = fn(param)
+            
             p_should_use_set_data = compute_should_use_set_data(param, param_applied)
 
             # subclasses may have multiple child tensors so we need to use swap_tensors
@@ -809,6 +812,7 @@ class Module:
 
             param_grad = param.grad
             if p_should_use_swap_tensors:
+                print("902230920320023-0\n")
                 try:
                     if param_grad is not None:
                         # Accessing param.grad makes its at::Tensor's use_count 2, which will prevent swapping.
@@ -829,7 +833,6 @@ class Module:
                 assert param.is_leaf
                 out_param = Parameter(param_applied, param.requires_grad)
                 self._parameters[key] = out_param
-
             if param_grad is not None:
                 with torch.no_grad():
                     grad_applied = fn(param_grad)
@@ -847,11 +850,9 @@ class Module:
                 else:
                     assert param_grad.is_leaf
                     out_param.grad = grad_applied.requires_grad_(param_grad.requires_grad)
-
         for key, buf in self._buffers.items():
             if buf is not None:
                 self._buffers[key] = fn(buf)
-
         return self
 
     def apply(self: T, fn: Callable[['Module'], None]) -> T:

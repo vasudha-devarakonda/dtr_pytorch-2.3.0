@@ -64,6 +64,7 @@ static void recursive_apply(
 }
 
 const Tensor& apply_(const Tensor& self, PyObject* fn) {
+  std::cout << "----------------------apply from tensor util-------------------------------------\n";
   if (self.is_meta()) {
     return self; // Just skip
   }

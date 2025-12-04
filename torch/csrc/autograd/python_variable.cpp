@@ -688,6 +688,7 @@ static PyObject* THPVariable_make_subclass(
     PyObject* _ignored,
     PyObject* args,
     PyObject* kwargs) {
+  // std::cout << "running subclasssssssssss\n";
   HANDLE_TH_ERRORS
   static PythonArgParser parser({
       "_make_subclass(PyObject* cls, Tensor data, bool require_grad=False, *, c10::string_view? dispatch_sizes_strides_policy=None, bool dispatch_device=False, bool dispatch_layout=False, Device? device_for_backend_keys=None)",
@@ -704,8 +705,10 @@ static PyObject* THPVariable_make_subclass(
   // stack
   torch_dispatch_mode::StashTorchDispatchStackGuard td_g;
   c10::impl::DisablePythonDispatcher dpd_g;
+  // std::cout << "-------------------------- numel from here: " << r.tensor(1).numel()<< " after detach " << r.tensor(1).detach().numel() << "\n";
   auto data =
-      r.tensor(1).detach(); // creates a fresh Tensor (DEFINITELY_UNINITIALIZED)
+      r.tensor(1).detach();
+  // std::cout << "data" << data.numel()<<"\n"; // creates a fresh Tensor (DEFINITELY_UNINITIALIZED)
   // We set `data`'s `allow_tensor_metadata_change` to true here, because we
   // want to allow the following use case for backward compatibility:
   //
@@ -719,18 +722,24 @@ static PyObject* THPVariable_make_subclass(
   data.set_requires_grad(r.toBool(2));
   const auto sizes_strides_policy = r.stringViewOptional(3);
   if (sizes_strides_policy.has_value()) {
+    // std::cout << "has policy\n";
     data.unsafeGetTensorImpl()->set_python_custom_sizes_strides(
         parseSizesStridesPolicyArgument(*sizes_strides_policy));
+         std::cout << "data hijkfwjwelkewhurir" << data.numel()<<"\n";
   }
   if (r.toBool(4)) {
     data.unsafeGetTensorImpl()->set_python_custom_device(true);
+    //  std::cout << "data hfejbeidjddihurir" << data.numel()<<"\n";
   }
   if (r.toBool(5)) {
     data.unsafeGetTensorImpl()->set_python_custom_layout(true);
+    //  std::cout << "data hfehufejfeihurir" << data.numel()<<"\n";
   }
   if (!r.isNone(6)) {
     data.unsafeGetTensorImpl()->_change_backend_component_keys(r.device(6));
+    //  std::cout << "data hjbhjjihurir" << data.numel()<<"\n";
   }
+  // std::cout << "data hihurir" << data.numel()<<"\n";
 
   return THPVariable_NewWithVar(
       (PyTypeObject*)cls,

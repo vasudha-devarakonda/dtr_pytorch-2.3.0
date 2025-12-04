@@ -126,7 +126,9 @@ SavedVariable::SavedVariable(
           is_inplace_on_view) {}
 
 Variable SavedVariable::unpack(std::shared_ptr<Node> saved_for) const {
+  // std::cout << "unpacking the variable\n";
   if (was_default_constructed_) {
+
     return Variable();
   }
 
@@ -199,16 +201,19 @@ Variable SavedVariable::unpack(std::shared_ptr<Node> saved_for) const {
 
   // If we have the original variable, we simply return it
   if (!hooks_ && saved_original_) {
+    // std::cout << "returining the data here " << data_.numel();
     return data_;
   }
 
   const auto data = hooks_ ? hooks_->call_unpack_hook() : data_;
-
+  // std::cout << "data numel from here is " << data.numel() << "output nr is"
+            // << output_nr_  << "\n";
   // NB: saved views are unpacked as normal Variables (not views) even though
   // they still share the same storage. This works only because we never call
   // in-place functions on unpacked variables.
   Variable var;
   if (grad_fn) {
+    // std::cout << "diagnosing here " << "\n";
     var = make_variable(data, Edge(std::move(grad_fn), output_nr_));
   } else {
     var = make_variable(data, requires_grad_);
@@ -226,7 +231,7 @@ Variable SavedVariable::unpack(std::shared_ptr<Node> saved_for) const {
     auto new_fw_grad = fw_grad_->value(/* level */ 0);
     var._set_fw_grad(new_fw_grad, /* level */ 0, /* is_inplace_op */ false);
   }
-
+ 
   return var;
 }
 

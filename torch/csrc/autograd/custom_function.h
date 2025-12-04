@@ -338,6 +338,7 @@ auto Function<T>::apply(Args&&... args)
 template <class T>
 // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 variable_list CppNode<T>::apply(variable_list&& inputs) {
+  std::cout << "backward apply\n";
   at::OptionalDeviceGuard _device_guard;
 
   auto num_inputs = inputs.size();

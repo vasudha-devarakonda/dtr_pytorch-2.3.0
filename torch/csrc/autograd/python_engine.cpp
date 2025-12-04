@@ -171,6 +171,7 @@ PyObject* THPEngine_run_backward(
     PyObject* self,
     PyObject* args,
     PyObject* kwargs) {
+  // std::cout << "\n \n \n \n running backward running ------\n \n \n\n";
   HANDLE_TH_ERRORS
   PyObject* tensors = nullptr;
   PyObject* grad_tensors = nullptr;
@@ -180,15 +181,16 @@ PyObject* THPEngine_run_backward(
   unsigned char allow_unreachable = 0;
   unsigned char accumulate_grad =
       0; // Indicate whether to accumulate grad into leaf Tensors or capture
-  constexpr const char* accepted_kwargs[] = {// NOLINT
-                                             "tensors",
-                                             "grad_tensors",
-                                             "keep_graph",
-                                             "create_graph",
-                                             "inputs",
-                                             "allow_unreachable",
-                                             "accumulate_grad",
-                                             nullptr};
+  constexpr const char* accepted_kwargs[] = {
+      // NOLINT
+      "tensors",
+      "grad_tensors",
+      "keep_graph",
+      "create_graph",
+      "inputs",
+      "allow_unreachable",
+      "accumulate_grad",
+      nullptr};
   if (!PyArg_ParseTupleAndKeywords(
           args,
           kwargs,
@@ -216,6 +218,7 @@ PyObject* THPEngine_run_backward(
 
   Py_ssize_t num_tensors = PyTuple_GET_SIZE(tensors);
   Py_ssize_t num_gradients = PyTuple_GET_SIZE(grad_tensors);
+  // std::cout << "moving forward\n";
   TORCH_CHECK(
       num_tensors == num_gradients,
       "got ",
@@ -234,6 +237,7 @@ PyObject* THPEngine_run_backward(
       "torch.autograd.grad inside torch.vmap");
 
   edge_list roots;
+
   roots.reserve(num_tensors);
   variable_list grads;
   grads.reserve(num_tensors);
@@ -255,6 +259,7 @@ PyObject* THPEngine_run_backward(
         "call autograd.grad() outside torch.vmap or file a bug report "
         "with your use case.")
     auto gradient_edge = torch::autograd::impl::gradient_edge(variable);
+    // std::cout << "gradient edge " << variable.numel() << "\n";
     TORCH_CHECK(
         gradient_edge.function,
         "element ",
@@ -294,6 +299,7 @@ PyObject* THPEngine_run_backward(
         PyTuple_CheckExact(inputs), "inputs to run_backward must be a tuple");
     int num_inputs = PyTuple_GET_SIZE(inputs);
     output_edges.reserve(num_inputs);
+    // std::cout << "numbe of inpits is " << num_inputs << "\n";
     for (const auto i : c10::irange(num_inputs)) {
       PyObject* input = PyTuple_GET_ITEM(inputs, i);
       if (THPVariable_Check(input)) {
@@ -309,6 +315,7 @@ PyObject* THPEngine_run_backward(
             "with your use case.")
         const auto output_nr = tensor.output_nr();
         auto grad_fn = tensor.grad_fn();
+        std::cout <<"-----grad function is " <<grad_fn << "\n";
         if (!grad_fn) {
           grad_fn = torch::autograd::impl::try_get_grad_accumulator(tensor);
         }
@@ -347,6 +354,7 @@ PyObject* THPEngine_run_backward(
 
         auto output_nr = THPUtils_unpackUInt32(PyTuple_GetItem(input, 1));
         output_edges.emplace_back(node_sp, output_nr);
+        std::cout << "noide is " << node_sp->name() << "\n";
       } else {
         TORCH_CHECK(
             false,
@@ -355,7 +363,7 @@ PyObject* THPEngine_run_backward(
       }
     }
   }
-
+  // std::cout << "output edges\n";
   variable_list outputs;
   {
     pybind11::gil_scoped_release no_gil;

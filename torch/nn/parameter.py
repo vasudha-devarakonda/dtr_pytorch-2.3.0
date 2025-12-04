@@ -33,8 +33,10 @@ class Parameter(torch.Tensor, metaclass=_ParameterMeta):
 
     def __new__(cls, data=None, requires_grad=True):
         if data is None:
+            print("DATA IS EMPTY\n")
             data = torch.empty(0)
         if type(data) is torch.Tensor or type(data) is Parameter:
+            # print("093093093290239023093232\n")
             # For ease of BC maintenance, keep this path for standard Tensor.
             # Eventually (tm), we should change the behavior for standard Tensor to match.
             return torch.Tensor._make_subclass(cls, data, requires_grad)
@@ -48,6 +50,9 @@ class Parameter(torch.Tensor, metaclass=_ParameterMeta):
                                "Parameter, please correct the detach() semantics defined by "
                                "its __torch_dispatch__() implementation.")
         t._is_param = True
+        print("902390232903023209320\n")
+        print(t.numel())
+        print("902390232903023209320\n")
         return t
 
     # Note: the 3 methods below only apply to standard Tensor. Parameters of custom tensor types

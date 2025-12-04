@@ -137,6 +137,7 @@ namespace torch::autograd {
 // backward; it's used by engine.cpp.  This is responsible for forwarding a call
 // from C++'s Node::apply to a Python method "apply".
 auto PyNode::apply(variable_list&& inputs) -> variable_list {
+  std::cout << "apply function for backward\n";
   pybind11::gil_scoped_acquire gil;
   at::OptionalDeviceGuard _device_guard;
   THPFunction* py_fn = (THPFunction*)obj;
