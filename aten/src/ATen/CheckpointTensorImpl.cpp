@@ -169,9 +169,9 @@ void CheckpointPool::auto_evict() {
   STATS.track("CheckpointPool::auto_evict");
   if (has_memory_budget) {
     while (current_memory() > memory_budget) {
-      std::cout
-          << " -------------------************** the current memory is greater than the budget: "
-          << current_memory() << " the mrmoy budget" << memory_budget << "\n";
+      // std::cout
+      //     << " -------------------************** the current memory is greater than the budget: "
+      //     << current_memory() << " the mrmoy budget" << memory_budget << "\n";
       evict();
     }
   }
@@ -455,8 +455,8 @@ void External::release_resources() {
 void Rematerializer::remat() {
   STATS.track("remat");
   // TODO: refactor using RAII for exception safety.
-  // std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&recomputing function: " << name
-  //           << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n";
+  std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&recomputing function: " << name
+    << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n";
   for (const strong& s : inputs) {
     s->pool->lock();
   }

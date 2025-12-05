@@ -824,6 +824,7 @@ inline std::tuple<Tensor, Tensor> multi_head_attention_forward(
     TORCH_CHECK(!bias_k.defined());
     TORCH_CHECK(!bias_v.defined());
   }
+  std::cout << "activation here\n";
   q = q.contiguous().view({tgt_len, bsz * num_heads, head_dim}).transpose(0, 1);
   if (k.defined()) {
     k = k.contiguous().view({-1, bsz * num_heads, head_dim}).transpose(0, 1);

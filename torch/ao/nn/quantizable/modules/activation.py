@@ -309,7 +309,7 @@ class MultiheadAttention(nn.MultiheadAttention):
         # `torch.nn.functional.multi_head_attention`. Will need to refactor.
         static_k = None
         static_v = None
-
+        print("===========================================forward activation==============")
         if attn_mask is not None and is_causal:
             raise AssertionError("Only allow causal mask or attn_mask")
 
@@ -381,9 +381,9 @@ class MultiheadAttention(nn.MultiheadAttention):
 
         q = q.contiguous().view(tgt_len, bsz * self.num_heads, head_dim).transpose(0, 1)
         if k is not None:
-            k = k.contiguous().view(-1, bsz * self.num_heads, head_dim).transpose(0, 1)
+            k = k.contiguous().reshape(-1, bsz * self.num_heads, head_dim).transpose(0, 1)
         if v is not None:
-            v = v.contiguous().view(-1, bsz * self.num_heads, head_dim).transpose(0, 1)
+            v = v.contiguous().reshape(-1, bsz * self.num_heads, head_dim).transpose(0, 1)
 
         if static_k is not None:
             assert static_k.size(0) == bsz * self.num_heads
@@ -447,7 +447,7 @@ class MultiheadAttention(nn.MultiheadAttention):
         if self.batch_first:
             attn_output = attn_output.view(bsz, tgt_len, self.embed_dim)
         else:
-            attn_output = attn_output.transpose(0, 1).contiguous().view(tgt_len, bsz, self.embed_dim)
+            attn_output = attn_output.transpose(0, 1).contiguous().reshape(tgt_len, bsz, self.embed_dim)
 
         # Reentering the quantized zone
         attn_output = self.quant_attn_output(attn_output)
