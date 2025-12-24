@@ -5179,6 +5179,8 @@ def multi_head_attention_forward(
     average_attn_weights: bool = True,
     is_causal: bool = False,
 ) -> Tuple[Tensor, Optional[Tensor]]:
+
+    print("========calling attention forward==========\n")
     r"""Forward method for MultiHeadAttention.
 
     See :class:`torch.nn.MultiheadAttention` for details.

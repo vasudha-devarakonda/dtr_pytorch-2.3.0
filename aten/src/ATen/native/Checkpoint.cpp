@@ -357,14 +357,42 @@ std::tuple<Tensor&, Tensor&, Tensor&> checkpoint_native_batch_norm_out(
 }
 
 Tensor checkpoint_view(const Tensor& a, IntArrayRef b) {
-  std::cout << "view\n";
+  std::cout << "checkpoint view\n";
   auto b_ = b.vec();
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
-    return {vec.at(0).view(b_)};
+    return {vec.at(0).reshape(b_)};
   };
   return CheckpointTensorImpl::make("view", rt, {a})[0];
 }
 
+Tensor checkpoint_gelu(const Tensor& a, c10::string_view approximate) {
+  std::cout << "checkpoint gelu\n";
+  c10::string_view value_approx = approximate;
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::gelu(vec.at(0), value_approx )};
+  };
+  return CheckpointTensorImpl::make("gelu", rt, {a})[0];
+}
+Tensor checkpoint_gelu_backward(const Tensor& a, const Tensor& b, c10::string_view approximate) {
+  std::cout << "checkpoint gelu backward\n";
+  c10::string_view value_approx = approximate;
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::gelu_backward(vec.at(0), vec.at(1),value_approx )};
+  };
+  return CheckpointTensorImpl::make("view", rt, {a,b})[0];
+}
+Tensor checkpoint_embedding_dense_backward(
+    const Tensor& a,
+    const Tensor& b,
+    int64_t num_weights,
+    int64_t padding_idx, 
+    bool d){
+  std::cout << "checkpoint embedding dense backward\n";
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::embedding_dense_backward(vec.at(0), vec.at(1), num_weights, padding_idx, d)};
+  };
+  return CheckpointTensorImpl::make("embedding_dense_backward", rt, {a, b})[0];
+}
 Tensor checkpoint_detach(const Tensor& a) {
   std::cout << "checkpoint detach\n";
   return Tensor(get_cpti(a)->shallow_copy_and_detach(

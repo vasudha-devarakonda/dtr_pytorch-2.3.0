@@ -665,6 +665,7 @@ inline std::tuple<Tensor, Tensor> multi_head_attention_forward(
     const Tensor& static_k = {},
     const Tensor& static_v = {},
     bool average_attn_weights = true) {
+      std::cout << "==========================attention==================\n";
   namespace F = torch::nn::functional;
 
   const auto query_sizes = query.sizes();

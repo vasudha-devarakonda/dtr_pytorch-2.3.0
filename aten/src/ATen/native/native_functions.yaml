@@ -2405,6 +2405,7 @@
     CPU: embedding_dense_backward_cpu
     CUDA: embedding_dense_backward_cuda
     MPS: embedding_dense_backward_mps
+    Checkpoint: checkpoint_embedding_dense_backward
   autogen: embedding_dense_backward.out
   tags: core
 
@@ -5177,6 +5178,7 @@
   python_module: nn
   dispatch:
     MkldnnCPU: mkldnn_gelu
+    Checkpoint: checkpoint_gelu
     QuantizedCPU: gelu_quantized_cpu
     QuantizedCUDA: gelu_quantized_cuda
     NestedTensorCPU, NestedTensorCUDA: NestedTensor_gelu
@@ -5196,6 +5198,7 @@
   python_module: nn
   dispatch:
     MkldnnCPU: mkldnn_gelu_backward
+    Checkpoint: checkpoint_gelu_backward
     NestedTensorCPU, NestedTensorCUDA: gelu_backwards_nested
   tags: pointwise
 
