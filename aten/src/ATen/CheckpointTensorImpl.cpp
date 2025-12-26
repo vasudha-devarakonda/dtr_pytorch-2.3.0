@@ -147,6 +147,8 @@ bool use_log_ = false;
 bool use_profile_ = false;
 long base_compute_time_ = 0;
 long remat_compute_time_ = 0;
+long remat_compute_count_ =0 ;
+long remat_compute_size_ = 0;
 long search_time_ = 0;
 long cost_time_ = 0;
 
@@ -372,6 +374,12 @@ long search_time() {
 long remat_compute_time() {
   return remat_compute_time_;
 }
+long remat_compute_count() {
+  return remat_compute_count_;
+}
+long remat_compute_size() {
+  return remat_compute_size_;
+}
 
 long base_compute_time() {
   return base_compute_time_;
@@ -455,8 +463,8 @@ void External::release_resources() {
 void Rematerializer::remat() {
   STATS.track("remat");
   // TODO: refactor using RAII for exception safety.
-  std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&recomputing function: " << name
-    << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n";
+  // std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&recomputing function: " << name
+  //   << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n";
   for (const strong& s : inputs) {
     s->pool->lock();
   }
@@ -466,10 +474,12 @@ void Rematerializer::remat() {
   time_t post = std::chrono::system_clock::now();
   pool.auto_evict();
   remat_compute_time_ += (post - pre).count();
+  remat_compute_count_ += 1;
   TORCH_CHECK(ret.size() == outputs.size());
   for (size_t i = 0; i < outputs.size(); ++i) {
     if (auto output_cell = outputs[i].lock()) {
       output_cell->fill(ret[i]);
+      remat_compute_size_ += output_cell->memory();
     }
   }
   ecn.reset();

@@ -1000,6 +1000,7 @@ def gelu(a: TensorLikeType, approximate: str = "none") -> TensorLikeType:
     """
     Reference implementation of torch.nn.functional.gelu
     """
+
     if not isinstance(a, TensorLike):
         raise RuntimeError(
             "Expected a tensor input for an elementwise unary operation!"
@@ -1007,6 +1008,9 @@ def gelu(a: TensorLikeType, approximate: str = "none") -> TensorLikeType:
     M_SQRT2 = 1.41421356237309504880
     M_SQRT1_2 = 0.70710678118654752440
     M_2_SQRTPI = 1.12837916709551257390
+    print("\n\n\n99999999999999\n\n\n")
+    print(approximate)
+    print("\n\n\n99999999999999\n\n\n")
     if approximate == "tanh":
         kBeta = M_SQRT2 * M_2_SQRTPI * 0.5
         kKappa = 0.044715

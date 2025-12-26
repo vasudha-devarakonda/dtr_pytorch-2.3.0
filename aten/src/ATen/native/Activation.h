@@ -3,7 +3,7 @@
 #include <ATen/native/DispatchStub.h>
 #include <c10/util/Exception.h>
 #include <c10/util/string_view.h>
-
+#include <iostream>
 namespace c10 {
 class Scalar;
 }

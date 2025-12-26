@@ -33,21 +33,6 @@ Tensor checkpoint_unsafe_view(const Tensor& a, IntArrayRef b) {
   return CheckpointTensorImpl::make("_unsafe_view", rt, {a})[0];
 }
 
-Tensor checkpoint_cat(const ITensorListRef& qxs, int64_t dim) {
-  std::cout << "checkpoint cat\n";
-  std::vector<Tensor> qxs_copy;
-  qxs_copy.reserve(qxs.size());
-  for (const auto& t : qxs) {
-    qxs_copy.push_back(t);
-  }
-
-  std::cout << "checkpoint_cat\n";
-  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
-    return {at::cat(vec, dim)};
-  };
-  // //std::coutrunning checkpoint implementation tensor " << std::endl;
-  return CheckpointTensorImpl::make("cat", rt, qxs_copy)[0];
-}
 
 Tensor checkpoint_mean(
     const Tensor& self,
@@ -63,7 +48,7 @@ Tensor checkpoint_permute(const Tensor& self, IntArrayRef dim) {
   std::cout << "checkpint permute\n";
   auto dim_ = dim.vec();
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
-    return {at::permute(vec[0], dim)};
+    return {at::permute(vec[0], dim_)};
   };
   return CheckpointTensorImpl::make("permute", rt, {self})[0];
 }
@@ -364,10 +349,22 @@ Tensor checkpoint_view(const Tensor& a, IntArrayRef b) {
   };
   return CheckpointTensorImpl::make("view", rt, {a})[0];
 }
+Tensor checkpoint_any(const Tensor& self) {
+  std::cout << "checkpoint any\n";
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::any(vec.at(0))};
+  };
+  return CheckpointTensorImpl::make("any", rt, {self})[0];
+}
 
+
+Scalar checkpoint__local_scalar_dense(at::Tensor const& a) {
+  // std::cout << "checkpoint local scalar dense\n";
+  return at::_local_scalar_dense(decheckpoint(a));
+}
 Tensor checkpoint_gelu(const Tensor& a, c10::string_view approximate) {
-  std::cout << "checkpoint gelu\n";
-  c10::string_view value_approx = approximate;
+  // std::cout << "checkpoint gelu\n";
+  std::string value_approx = std::string(approximate);
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
     return {at::gelu(vec.at(0), value_approx )};
   };
@@ -375,11 +372,11 @@ Tensor checkpoint_gelu(const Tensor& a, c10::string_view approximate) {
 }
 Tensor checkpoint_gelu_backward(const Tensor& a, const Tensor& b, c10::string_view approximate) {
   std::cout << "checkpoint gelu backward\n";
-  c10::string_view value_approx = approximate;
+  std::string value_approx = std::string(approximate);
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
     return {at::gelu_backward(vec.at(0), vec.at(1),value_approx )};
   };
-  return CheckpointTensorImpl::make("view", rt, {a,b})[0];
+  return CheckpointTensorImpl::make("gelu_backward", rt, {a,b})[0];
 }
 Tensor checkpoint_embedding_dense_backward(
     const Tensor& a,
@@ -490,12 +487,77 @@ Tensor& checkpoint_mul_(at::Tensor& a, at::Tensor const& b) {
   return a;
 }
 
+Tensor& checkpoint_addcdiv_(
+    at::Tensor& a,
+    at::Tensor const& b,
+    at::Tensor const& c,
+    const at::Scalar& d) {
+  std::cout << "checkpoint_addcdiv_\n";
+  mutate_function_t mt = [=](const Tensors& vec) {
+    vec.at(0).addcdiv_(vec.at(1), vec.at(2), d);
+  };
+  CheckpointTensorImpl::mutate("addcdiv_", mt, {a, b, c}, {0});
+  return a;
+}
+
+Tensor& checkpoint_add_(at::Tensor& a,  const at::Scalar& b,  const at::Scalar& c) {
+  std::cout << "checkpoint add_ \n";
+  mutate_function_t mt = [=](const Tensors& vec) { vec.at(0).add_(b, c); };
+  CheckpointTensorImpl::mutate("add_", mt, {a}, {0});
+  return a;
+}
+
+Tensor& checkpoint_lerp__scalar(
+    at::Tensor& self,
+    const at::Tensor& end,
+    const at::Scalar& weight) {
+    
+    std::cout << "checkpoint lerp__scalar \n";
+    
+    mutate_function_t mt = [=](const Tensors& vec) {
+        vec.at(0).lerp_(vec.at(1), weight.to<float>());
+    };
+    
+    CheckpointTensorImpl::mutate("lerp__scalar", mt, {self, end}, {0});
+    
+    return self;
+}
+
+Tensor& checkpoint_addcmul_(
+    at::Tensor& a,
+    at::Tensor const& b,
+    at::Tensor const& c,
+    const c10::Scalar& d) {
+  std::cout << "checkpoint addcmul_ \n";
+  mutate_function_t mt = [=](const Tensors& vec) {
+    vec.at(0).addcmul_(vec.at(1), vec.at(2), d);
+  };
+  CheckpointTensorImpl::mutate("addcmul_", mt, {a, b, c}, {0});
+  return a;
+}
+
+Tensor checkpoint_sqrt(const Tensor& a) {
+  std::cout << "checkpoint sqrt\n";
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::sqrt(vec.at(0))};
+  };
+  return CheckpointTensorImpl::make("sqrt", rt, {a})[0];
+}
+
 Tensor& checkpoint_mul_(at::Tensor& a, const c10::Scalar& b) {
   std::cout << "checkpoint mul scalar\n";
   mutate_function_t mt = [=](const Tensors& vec) { vec.at(0).mul_(b); };
   CheckpointTensorImpl::mutate("mul_", mt, {a}, {0});
   return a;
 }
+
+Tensor& checkpoint_div_(at::Tensor& a, const c10::Scalar& b) {
+  std::cout << "checkpoint div scalar\n";
+  mutate_function_t mt = [=](const Tensors& vec) { vec.at(0).div_(b); };
+  CheckpointTensorImpl::mutate("div_", mt, {a}, {0});
+  return a;
+}
+
 Tensor checkpoint_mul(at::Tensor const& a, const c10::Scalar& b) {
   std::cout << "checkpoint mul scalar\n";
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
@@ -613,6 +675,42 @@ Tensor checkpoint_eq_Scalar(const Tensor& a, const c10::Scalar& b) {
   return CheckpointTensorImpl::make("eq_Scalar", rt, {a})[0];
 }
 
+
+Tensor& checkpoint_zero_(Tensor& a) {
+  std::cout << "checkpoint zero_ \n";
+  mutate_function_t mt = [=](const Tensors& vec) { vec.at(0).zero_(); };
+  CheckpointTensorImpl::mutate("zero_", mt, {a}, {0});
+  return a;
+}
+
+Tensor checkpoint_cat(const ITensorListRef& qxs, int64_t dim) {
+  std::cout << "checkpoint cat\n";
+  std::vector<Tensor> qxs_copy;
+  qxs_copy.reserve(qxs.size());
+  for (const auto& t : qxs) {
+    qxs_copy.push_back(t);
+  }
+
+  std::cout << "checkpoint_cat\n";
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::cat(vec, dim)};
+  };
+  // //std::coutrunning checkpoint implementation tensor " << std::endl;
+  return CheckpointTensorImpl::make("cat", rt, qxs_copy)[0];
+}
+
+Tensor checkpoint_empty_like(const Tensor& a,
+    c10::optional<ScalarType> dtype,
+    c10::optional<Layout> layout,
+    c10::optional<Device> device,
+    c10::optional<bool> pin_memory,
+    c10::optional<c10::MemoryFormat> optional_memory_format) {
+  std::cout << "checkpoint empty like\n";
+  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+    return {at::empty_like(vec.at(0), dtype, layout, device, pin_memory, optional_memory_format)};
+  };
+  return CheckpointTensorImpl::make("empty_like", rt, {a})[0];
+}
 Tensor& checkpoint_eq_Scalar_out(
     const Tensor& self,
     const c10::Scalar& other,
