@@ -377,6 +377,7 @@
   variants: function
   dispatch:
     CPU: native_dropout_cpu
+    Checkpoint: checkpoint_native_dropout 
     CUDA: native_dropout_cuda
     NestedTensorCPU, NestedTensorCUDA: native_dropout_nested
     
@@ -387,6 +388,7 @@
   dispatch:
     CPU, NestedTensorCPU, NestedTensorCUDA: native_dropout_backward
     CUDA: native_dropout_backward_cuda
+    Checkpoint: checkpoint_native_dropout_backward
   autogen: native_dropout_backward.out
   tags: pointwise
 
@@ -5682,7 +5684,7 @@
   device_guard: False
   dispatch:
     CompositeExplicitAutograd: split
-    ##Checkpoint: checkpoint_split
+    Checkpoint: checkpoint_split
 
 - func: split.sizes(Tensor(a -> *) self, SymInt[] split_size, int dim=0) -> Tensor(a)[]
   variants: function, method
@@ -6128,7 +6130,7 @@
     MkldnnCPU: mkldnn_tanh
     SparseCPU, SparseCUDA: tanh_sparse
     SparseCsrCPU, SparseCsrCUDA: tanh_sparse_csr
-    ##Checkpoint: checkpoint_tanh
+    Checkpoint: checkpoint_tanh
     NestedTensorCPU, NestedTensorCUDA: NestedTensor_tanh
   tags: [core, pointwise]
 
@@ -8088,7 +8090,7 @@
     QuantizedCPU: masked_fill__quantized_cpu
     QuantizedCUDA: masked_fill__quantized_cuda
     MPS: masked_fill__mps
-    ##Checkpoint: checkpoint_masked_fill_
+    Checkpoint: checkpoint_masked_fill_
   autogen: masked_fill.Scalar_out
 
 - func: masked_fill.Scalar(Tensor self, Tensor mask, Scalar value) -> Tensor
@@ -9259,7 +9261,7 @@
   variants: method, function
   dispatch:
     QuantizedCPU: lt_quantized_cpu
-    #Checkpoint: checkpoint_lt
+    Checkpoint: checkpoint_lt
   tags: [core, pointwise]
 
 - func: lt_.Scalar(Tensor(a!) self, Scalar other) -> Tensor(a!)
@@ -10108,6 +10110,8 @@
   structured_delegate: maximum.out
   device_check: NoCheck   # TensorIterator
   variants: method, function
+  dispatch:
+    Checkpoint: checkpoint_maximum
   tags: [core, pointwise]
 
 - func: maximum.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)
@@ -10364,6 +10368,7 @@
   variants: function, method
   dispatch:
     SparseCPU, SparseCUDA: pow_sparse_scalar
+    Checkpoint: checkpoint_pow_Tensor_scalar
   tags: [core, pointwise]
 
 - func: pow_.Scalar(Tensor(a!) self, Scalar exponent) -> Tensor(a!)
@@ -13074,7 +13079,7 @@
   python_module: nn
   structured_delegate: tanh_backward.grad_input
   dispatch:
-    ##Checkpoint: checkpoint_tanh_backward
+    Checkpoint: checkpoint_tanh_backward
 # What's a thnn_conv_ versus a slow_conv_?
 #
 # Historically, we have inefficient implementations of convolutions

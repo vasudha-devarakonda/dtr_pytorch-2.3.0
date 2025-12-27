@@ -170,6 +170,7 @@ long current_memory() {
 void CheckpointPool::auto_evict() {
   STATS.track("CheckpointPool::auto_evict");
   if (has_memory_budget) {
+   
     while (current_memory() > memory_budget) {
       // std::cout
       //     << " -------------------************** the current memory is greater than the budget: "
@@ -463,8 +464,8 @@ void External::release_resources() {
 void Rematerializer::remat() {
   STATS.track("remat");
   // TODO: refactor using RAII for exception safety.
-  // std::cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&recomputing function: " << name
-  //   << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n";
+  std::cout << "&&&&&recomputing function: " << name
+    << "&&&&&&\n";
   for (const strong& s : inputs) {
     s->pool->lock();
   }
@@ -625,7 +626,7 @@ MakeRawResult make_raw(
     const std::string& name,
     const rematerialize_function_t& remat_f,
     const strongs& inputs) {
-  // std::cout << "making raw for " << name << "\n";
+
   STATS.track("make_raw for: ");
   for (const strong& s : inputs) {
     s->pool->lock();
@@ -642,7 +643,6 @@ MakeRawResult make_raw(
   std::string name_of_function = name;
   auto remat = intrusive_ptr<Rematerializer>::make(
       Unsafe(), remat_f, inputs, post - pre, name_of_function);
-
   for (const Tensor& t : raw_outputs) {
     if (t.defined()) {
       intrusive_ptr<AliasPool> alias_pool;
