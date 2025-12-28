@@ -10536,14 +10536,14 @@
   device_check: NoCheck   # foreach kernels fall back to slow path when tensor are on different devices
   variants: function
   dispatch:
-    CPU: foreach_tensor_add_list_kernel_slow
+    CPU, Checkpoint: foreach_tensor_add_list_kernel_slow
     CUDA: foreach_tensor_add_list_kernel_cuda
 
 - func: _foreach_add_.List(Tensor(a!)[] self, Tensor[] other, *, Scalar alpha=1) -> ()
   device_check: NoCheck   # foreach kernels fall back to slow path when tensor are on different devices
   variants: function
   dispatch:
-    CPU: foreach_tensor_add_list_kernel_slow_
+    CPU, Checkpoint: foreach_tensor_add_list_kernel_slow_
     CUDA: foreach_tensor_add_list_kernel_cuda_
   autogen: _foreach_add.List_out
 

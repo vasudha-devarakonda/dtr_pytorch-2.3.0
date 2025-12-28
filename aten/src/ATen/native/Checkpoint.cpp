@@ -170,11 +170,19 @@ Tensor checkpoint_mean(
     bool keepdim,
     c10::optional<c10::ScalarType> dtype) {
   //std::cout << "checkpoint mean\n";
-  at::OptionalIntArrayRef dim_vec;
+
+
+    c10::optional<std::vector<int64_t>> dim_storage;
   if (dim.has_value()) {
-    dim_vec = dim.value().vec();
+    dim_storage = dim.value().vec(); 
   }
   rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+
+    at::OptionalIntArrayRef dim_vec;
+    if (dim_storage.has_value()) {
+      dim_vec = at::IntArrayRef(dim_storage.value());
+    }
+
     return {at::mean(vec[0], dim_vec, keepdim, dtype)};
   };
   return CheckpointTensorImpl::make("mean.dim", rt, {self})[0];
@@ -426,6 +434,7 @@ Tensor checkpoint_view(const Tensor& a, IntArrayRef b) {
     auto reshaped = vec.at(0).reshape(b_);
     return {reshaped};
   };
+
   return CheckpointTensorImpl::make("view", rt, {a})[0];
 }
 
@@ -659,17 +668,24 @@ Tensor checkpoint_sum_dim_IntList(
     at::OptionalIntArrayRef b,
     bool c,
     c10::optional<ScalarType> d) {
-  //std::cout << "checkpoint sum int list \n";
-  at::OptionalIntArrayRef b_vec;
+
+  
+  c10::optional<std::vector<int64_t>> b_storage;
   if (b.has_value()) {
-    b_vec = b.value().vec();
+    b_storage = b.value().vec(); 
   }
-  rematerialize_function_t rt = [=](const Tensors& vec) -> Tensors {
+
+  rematerialize_function_t rt = [b_storage, c, d](const Tensors& vec) -> Tensors {
+
+    at::OptionalIntArrayRef b_vec;
+    if (b_storage.has_value()) {
+      b_vec = at::IntArrayRef(b_storage.value());
+    }
     return {at::sum(vec.at(0), b_vec, c, d)};
   };
+
   return CheckpointTensorImpl::make("sum_dim_IntList", rt, {a})[0];
 }
-
 Tensor checkpoint_cudnn_convolution(
     const Tensor& a,
     const Tensor& b,
@@ -1464,7 +1480,6 @@ std::tuple<Tensor, Tensor, Tensor> checkpoint_layer_norm(
     c10::optional<Tensor> weight;
     if (has_weight && vec.size() > 1 && vec.at(1).numel() > 0)
       weight = vec.at(1);
-
     c10::optional<Tensor> bias;
     if (has_bias && vec.size() > 2 && vec.at(2).numel() > 0)
       bias = vec.at(2);
@@ -1472,23 +1487,24 @@ std::tuple<Tensor, Tensor, Tensor> checkpoint_layer_norm(
     auto ret = at::native_layer_norm(vec.at(0), ns_vec, weight, bias, eps);
     return {std::get<0>(ret), std::get<1>(ret), std::get<2>(ret)};
   };
+
   auto make_tensor = [&](const c10::optional<Tensor>& opt) -> Tensor {
     if (opt.has_value() && opt->numel() > 0)
       return *opt;
-    else
       return at::empty({0}, input.options());
   };
 
   std::vector<Tensor> args;
   args.reserve(3);
   args.push_back(input);
-  if (weight_opt.has_value() && weight_opt->numel() > 0)
-    args.push_back(*weight_opt);
-  if (bias_opt.has_value() && bias_opt->numel() > 0)
-    args.push_back(*bias_opt);
+  args.push_back(make_tensor(weight_opt));
+  args.push_back(make_tensor(bias_opt));
+
   auto ret = CheckpointTensorImpl::make("native_layer_norm", rt, args);
   return {ret[0], ret[1], ret[2]};
 }
+
+
 Tensor checkpoint_where(
     at::Tensor const& a,
     at::Tensor const& b,
